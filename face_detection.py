@@ -1,44 +1,47 @@
-import numpy as np
+import training
 import cv2
+import numpy as np
 
-azul = (255, 0, 0)
-amarelo = (0, 255, 255)
-cont = 0
-padding = 15
+label = []
+def predict(test_img):
+    #make a copy of the image as we don't want to chang original image
+    img = cv2.imread(test_img).copy()
+    print("Face Prediction Running")
 
-def redim(img, larguraN):
-    scale_percent = larguraN # percent of original size
-    width = int(img.shape[1] * scale_percent / 100)
-    height = int(img.shape[0] * scale_percent / 100)
-    dim = (width, height)
-    return cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+    #detect face from the image
+    face, rect = training.detect_face(img)
+    print(len(face), "faces detected")
 
-df = cv2.CascadeClassifier('xml/frontalface.xml')
+    label, confidence = faceRecognizer.predict(face)
+    label_text = training.subjects[label]
+    
+    training.draw_rectangle(img, rect)
+    training.draw_text(img, label_text, rect[0], rect[1]-5)
+    
+    return img
 
-i = cv2.imread('imagens/festa.jpg')
-img = redim(i, 80)
-grayscaledImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+print("Preparing data...")
+faces, labels = training.prepare_training_data("training_data")
+print("Data prepared")
 
-# Executa a detecção
-# faces = df.detectMultiScale(iPB,
-#  scaleFactor = 1.2, minNeighbors = 7,
-#  minSize = (30,30), flags = cv2.CASCADE_SCALE_IMAGE)
-faceCoordinates = df.detectMultiScale(grayscaledImg,
-		scaleFactor=1.2,
-		minNeighbors=1,
-		minSize=(15, 10))
+faceRecognizer = cv2.face.LBPHFaceRecognizer_create()
+faceRecognizer.train(faces, np.array(labels))
 
-croppedImgs = []
+print("Predicting images...")
 
-# Desenha retangulos amarelos na imagem original (colorida)
-for (x, y, w, h) in faceCoordinates:
-    recorte = img[y:(y + h + padding), x:(x + w + padding)]
-    novoRecorte = redim(recorte, 80)
-    cont = cont + 1
-    cv2.rectangle(img, (x, y), (x + w, y + h), azul, 1)
-    croppedImgs.append(img[y:y + h, x:x + w])
+#load test images
+test_img1 = "test_data/gabriel.jpg"
+test_img2 = "test_data/daniela.jpg"
 
-# Exibe imagem. Título da janela exibe número de faces
-cv2.imshow(str(cont)+' face(s) encontrada(s)', img)
+#perform a prediction
+predicted_img1 = predict(test_img1)
+predicted_img2 = predict(test_img2)
+print("Prediction complete")
+
+#display both images
+cv2.imshow(training.subjects[1], cv2.resize(predicted_img1, (400, 500)))
+cv2.imshow(training.subjects[2], cv2.resize(predicted_img2, (400, 500)))
 cv2.waitKey(0)
-
+cv2.destroyAllWindows()
+cv2.waitKey(1)
+cv2.destroyAllWindows()
